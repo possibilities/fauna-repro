@@ -1,7 +1,6 @@
 const faunadb = require('faunadb')
 const q = faunadb.query
 
-// Admin secret created at https://app.fauna.com/keys
 const {
   faunadb_name: dbName,
   faunadb_secret: rootSecret
@@ -10,10 +9,11 @@ const {
 async function main() {
   const rootClient = new faunadb.Client({ secret: rootSecret })
 
-  // Delete db if exists
-  await rootClient.query(
-    q.Delete(q.Database(dbName))
-  ).catch(function() {})
+  if (await rootClient.query(q.Exists(q.Database(dbName)))) {
+    await rootClient.query(
+      q.Delete(q.Database(dbName))
+    )
+  }
 
   await rootClient.query(
     q.CreateDatabase({ name: dbName })
@@ -31,12 +31,9 @@ async function main() {
 
   // Create collections
   await serverClient.query(q.CreateCollection({ name: 'widgets' }))
-    .catch(function(error) { console.info('widgets:', error.message) })
 
   // Create user collection and index
   await serverClient.query(q.CreateCollection({ name: 'users' }))
-    .catch(function(error) { console.info('users:', error.message) })
-
   await serverClient.query(
     q.CreateIndex({
       name: 'users_by_email',
@@ -45,12 +42,7 @@ async function main() {
       terms: [{ field: ['data', 'email'] }],
       unique: true
     })
-  ).catch(function(error) { console.info('users_by_email:', error.message) })
-
-  // Delete role if exists
-  await adminClient.query(
-    q.Delete(q.Role('access_content'))
-  ).catch(function () {})
+  )
 
   await adminClient.query(
     q.CreateRole({
